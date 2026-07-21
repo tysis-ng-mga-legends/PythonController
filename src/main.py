@@ -1,4 +1,4 @@
-import sender
+import reciever
 
 if __name__ == "__main__":
-    sender.start_receiver()
+    reciever.start_receiver()
