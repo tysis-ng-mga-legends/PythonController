@@ -1,24 +1,33 @@
+import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 import joblib
 import pandas as pd
+from src.feature_mapper import FEATURE_NAMES
 
 
 class TrafficPredictor:
 
-    def __init__(self, model_dir: Path) -> None:
-        self.model = joblib.load(model_dir / "rf_baseline_model_n7.pkl")
-        self.scaler = joblib.load(model_dir / "scaler_n7.pkl")
-        self.label_encoder = joblib.load(model_dir / "label_encoder_n7.pkl")
-        self.feature_columns = joblib.load(model_dir / "feature_columns_n7.pkl")
+    def __init__(self, model_file: Path) -> None:
+        if not model_file.exists():
+            raise FileNotFoundError(f"Model file not found at: {model_file}")
 
-    def predict(self, mapped_features: Dict[str, Any]) -> str:
-        df = pd.DataFrame([mapped_features])[self.feature_columns]
+        self.model = joblib.load(model_file)
 
-        # Scale and predict
-        scaled = self.scaler.transform(df)
-        numeric_pred = self.model.predict(scaled)
+        # Read feature names saved inside the model, with a fallback to mapper names
+        if hasattr(self.model, "feature_names_in_"):
+            self.feature_names = list(self.model.feature_names_in_)
+        else:
+            self.feature_names = FEATURE_NAMES
 
-        # Map integer prediction back to class string
-        label = self.label_encoder.inverse_transform(numeric_pred)[0]
-        return str(label)
+        logging.info(
+            f"[PREDICTOR] Loaded model from {model_file.name} with {len(self.feature_names)} named features."
+        )
+
+    def predict(self, mapped_features: Dict[str, float]) -> str:
+        # Create a single-row DataFrame using the model's exact column headers
+        df = pd.DataFrame([mapped_features])[self.feature_names]
+
+        # Directly outputs class string ('Bulk-Transfer', 'Multimedia-Streaming', etc.)
+        predicted_label = self.model.predict(df)[0]
+        return str(predicted_label)
