@@ -1,29 +1,42 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-MODEL_KEYMAP = {
-    "FwdPktLenMax": "fwd_pkt_len_max",
-    "BwdPktLenMax": "bwd_pkt_len_max",
-    "FwdPktLenMin": "fwd_pkt_len_min",
-    "BwdPktLenMin": "bwd_pkt_len_min",
-    "FwdPktLenMean": "fwd_pkt_len_mean",
-    "BwdPktLenMean": "bwd_pkt_len_mean",
-    "FwdPktLenSTD": "fwd_pkt_len_std",
-    "BwdPktLenSTD": "bwd_pkt_len_std",
-    "PktLenVar": "pkt_len_var",
-    "FlowIatMean": "flow_iat_mean",
-    "FlowIatSTD": "flow_iat_std",
-    "FlowIatMax": "flow_iat_max",
-    "FwdIatMean": "fwd_iat_mean",
-    "PshFlagCount": "psh_flag_cnt",
-    "ProtoUDP": "proto_UDP",
+# Explicit mapping from Go struct fields to Scikit-Learn training feature names
+GO_TO_MODEL_FEATURE_MAP: Dict[str, str] = {
+    "FrameLenMean": "frame_len_mean",
+    "FrameLenStd": "frame_len_std",
+    "FrameLenMin": "frame_len_min",
+    "FrameLenMax": "frame_len_max",
+    "FrameLenCV": "frame_len_cv",
+    "PayloadLenMean": "payload_len_mean",
+    "PayloadLenStd": "payload_len_std",
+    "PayloadLenMin": "payload_len_min",
+    "PayloadLenMax": "payload_len_max",
+    "PayloadLenSum": "payload_len_sum",
+    "PayloadLenCV": "payload_len_cv",
+    "Duration": "duration",
+    "IatMean": "iat_mean",
+    "IatStd": "iat_std",
+    "IatMin": "iat_min",
+    "IatMax": "iat_max",
+    "IatCV": "iat_cv",
+    "FwdPackets": "fwd_packets",
+    "RevPackets": "rev_packets",
+    "FwdPayloadBytes": "fwd_payload_bytes",
+    "RevPayloadBytes": "rev_payload_bytes",
+    "DirNormAsymPackets": "dir_norm_asym_packets",
+    "DirNormAsymBytes": "dir_norm_asym_bytes",
 }
 
+FEATURE_NAMES: List[str] = list(GO_TO_MODEL_FEATURE_MAP.values())
 
-def case_translator(raw_features: Dict[str, Any]) -> Dict[str, Any]:
-    mapped_features = {
-        MODEL_KEYMAP[key]: val
-        for key, val in raw_features.items()
-        if key in MODEL_KEYMAP
-    }
 
-    return mapped_features
+def map_features(raw_features: Dict[str, Any]) -> Dict[str, float]:
+    """Translates Go PascalCase feature dictionary to snake_case float key-value pairs."""
+    mapped: Dict[str, float] = {}
+    for go_key, model_key in GO_TO_MODEL_FEATURE_MAP.items():
+        val = raw_features.get(go_key, 0.0)
+        try:
+            mapped[model_key] = float(val)
+        except (ValueError, TypeError):
+            mapped[model_key] = 0.0
+    return mapped
